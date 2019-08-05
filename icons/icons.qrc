@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/">
+        <file>nindlogo.png</file>
+        <file>diskwrite.gif</file>
+    </qresource>
+</RCC>
