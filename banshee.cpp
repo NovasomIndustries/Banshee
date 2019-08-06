@@ -15,13 +15,14 @@
 #include <QMovie>
 #include <iostream>
 
-QString Name , Version , Description;
+QString Type,Logo;
 
 banshee::banshee(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::banshee)
 {
     ui->setupUi(this);
+    ui->Icon_label->setVisible(false);
     system ("mount /dev/mmcblk0p5 /mnt");
     QString strKeyLocalVersion("File System Configuration/");
     QSettings * config = 0;
@@ -29,6 +30,20 @@ banshee::banshee(QWidget *parent) :
     ui->FileSystemNameLabel->setText(config->value( strKeyLocalVersion + "Name", "r").toString());
     ui->FileSystemVersionLabel->setText(config->value( strKeyLocalVersion + "Version", "r").toString());
     ui->FileSystemDescriptionLabel->setText(config->value( strKeyLocalVersion + "Description", "r").toString());
+    Type = config->value( strKeyLocalVersion + "Type", "r").toString();
+    Logo = config->value( strKeyLocalVersion + "Logo", "r").toString();
+    if ( QFile("/mnt/"+Logo).exists())
+    {
+        QPixmap pixmap("/mnt/"+Logo);
+        ui->Icon_label->setPixmap(pixmap);
+        //ui->Icon_label->setMask(pixmap.mask());
+        ui->Icon_label->setVisible(true);
+        std::cout << "Pixmap Found : "<< Logo.toLatin1().constData() <<"\n" << std::flush;
+    }
+    else
+        std::cout << "Pixmap not Found\n" << std::flush;
+    std::cout << "Found " << Type.toLatin1().constData() << " image\n" << std::flush;
+
     system ("umount /mnt");
     this->setCursor(Qt::ArrowCursor);
 }
@@ -37,9 +52,11 @@ banshee::~banshee()
 {
     delete ui;
 }
-#define NUMOPS 29
-/* bin home mnt run sys boot lib opt sbin tmp dev proc selinux usr etc media root srv var */
-char ops[NUMOPS][512] = {
+
+#define NUMOPS_LINUX 29
+#define NUMOPS_ANDROID7 10
+
+char linux_ops[NUMOPS_LINUX][512] = {
     "umount /src /dest_rootfs ; mkdir /src /dest_rootfs; mount /dev/mmcblk0p5 /src ;\
     sgdisk -Z /dev/mmcblk2; \
     partprobe /dev/mmcblk2 ; \
@@ -83,7 +100,7 @@ char ops[NUMOPS][512] = {
     umount /src /dest_rootfs ; \
     sync"
 };
-char visible_text[NUMOPS][512] = {
+char linux_visible_text[NUMOPS_LINUX][512] = {
     "Partitioning eMMC",
     "Formatting eMMC and writing boot files",
     "Copying /bin",
@@ -115,29 +132,82 @@ char visible_text[NUMOPS][512] = {
     "Customizing image",
 };
 
+char android_ops[NUMOPS_ANDROID7][512] = {
+    "mount /dev/mmcblk0p5 /mnt ;\
+    dd if=/mnt/SD.bin of=/dev/mmcblk2 seek=$(((0x000040 + 0x0000))) conv=sync,fsync; \
+    dd if=/mnt/SD.bin            of=/dev/mmcblk2 seek=$(((0x000040 + 0x0400))) conv=sync,fsync; \
+    dd if=/mnt/SD.bin            of=/dev/mmcblk2 seek=$(((0x000040 + 0x0800))) conv=sync,fsync; \
+    dd if=/mnt/SD.bin            of=/dev/mmcblk2 seek=$(((0x000040 + 0x0C00))) conv=sync,fsync; \
+    dd if=/mnt/SD.bin            of=/dev/mmcblk2 seek=$(((0x000040 + 0x1000))) conv=sync,fsync" ,
+
+    "dd if=/mnt/parameter.img     of=/dev/mmcblk2 seek=$(((0x000000 + 0x2000))) ibs=1M conv=sync,fsync" ,
+    "dd if=/mnt/uboot.img         of=/dev/mmcblk2 seek=$(((0x002000 + 0x2000))) ibs=1M conv=sync,fsync" ,
+    "dd if=/mnt/trust.img         of=/dev/mmcblk2 seek=$(((0x004000 + 0x2000))) ibs=1M conv=sync,fsync" ,
+    "dd if=/mnt/misc.img          of=/dev/mmcblk2 seek=$(((0x008000 + 0x2000))) ibs=1M conv=sync,fsync" ,
+    "dd if=/mnt/resource.img      of=/dev/mmcblk2 seek=$(((0x00A800 + 0x2000))) ibs=1M conv=sync,fsync" ,
+    "dd if=/mnt/kernel.img        of=/dev/mmcblk2 seek=$(((0x012000 + 0x2000))) ibs=1M conv=sync,fsync" ,
+    "dd if=/mnt/boot.img          of=/dev/mmcblk2 seek=$(((0x022000 + 0x2000))) ibs=1M conv=sync,fsync" ,
+    "dd if=/mnt/recovery.img      of=/dev/mmcblk2 seek=$(((0x032000 + 0x2000))) ibs=1M conv=sync,fsync" ,
+    "dd if=/mnt/system.img        of=/dev/mmcblk2 seek=$(((0x0AC000 + 0x2000))) ibs=1M conv=sync,fsync"
+};
+char android7_visible_text[NUMOPS_ANDROID7][512] = {
+    "Partitioning eMMC and storing boot files",
+    "Storing parameter.img",
+    "Storing uboot.img",
+    "Storing trust.img",
+    "Storing misc.img",
+    "Storing resource.img",
+    "Storing kernel.img",
+    "Storing boot.img",
+    "Storing recovery.img",
+    "Storing system.img ( this is a long process, and depends on uSD speed and eMMC size. Please wait )",
+};
+
 
 void banshee::on_write_pushButton_clicked()
 {
     int i=0 , interval , statbarval;
-    interval = 100 / NUMOPS;
     statbarval = 0;
     this->setCursor(Qt::WaitCursor);
 
-    for(i=0;i<NUMOPS;i++)
+    if ( Type == "Linux")
     {
-        ui->writeop_label->setText(visible_text[i]);
-        ui->writeop_label->repaint();
-        qApp->processEvents();
+        interval = 100 / NUMOPS_LINUX;
+        for(i=0;i<NUMOPS_LINUX;i++)
+        {
+            ui->writeop_label->setText(linux_visible_text[i]);
+            ui->writeop_label->repaint();
+            qApp->processEvents();
 
-        std::cout << "ops : " << ops[i] << "\n" << std::flush;
-        system(ops[i]);
-        statbarval += interval;
-        ui->progressBar->setValue(statbarval);
-        ui->progressBar->repaint();
-        qApp->processEvents();
+            std::cout << "ops : " << linux_ops[i] << "\n" << std::flush;
+            system(linux_ops[i]);
+            statbarval += interval;
+            ui->progressBar->setValue(statbarval);
+            ui->progressBar->repaint();
+            qApp->processEvents();
 
+        }
+    }
+    if ( Type == "Android7")
+    {
+        interval = 100 / NUMOPS_ANDROID7;
+        for(i=0;i<NUMOPS_ANDROID7;i++)
+        {
+            ui->writeop_label->setText(android7_visible_text[i]);
+            ui->writeop_label->repaint();
+            qApp->processEvents();
+
+            std::cout << "android_ops : " << android_ops[i] << "\n" << std::flush;
+            system(android_ops[i]);
+            statbarval += interval;
+            ui->progressBar->setValue(statbarval);
+            ui->progressBar->repaint();
+            qApp->processEvents();
+
+        }
     }
     ui->writeop_label->setText("Finished! Power off your target and remove uSD");
     ui->progressBar->setValue(100);
     this->setCursor(Qt::ArrowCursor);
+
 }

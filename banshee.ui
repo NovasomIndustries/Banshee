@@ -594,6 +594,22 @@
      <string/>
     </property>
    </widget>
+   <widget class="QLabel" name="Icon_label">
+    <property name="enabled">
+     <bool>true</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>830</x>
+      <y>170</y>
+      <width>301</width>
+      <height>301</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+   </widget>
   </widget>
   <widget class="QMenuBar" name="menuBar">
    <property name="geometry">
