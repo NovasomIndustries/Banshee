@@ -132,7 +132,7 @@ char linux_visible_text[NUMOPS_LINUX][512] = {
     "Customizing image",
 };
 
-char android_ops[NUMOPS_ANDROID7][512] = {
+char android7_ops[NUMOPS_ANDROID7][512] = {
     "mount /dev/mmcblk0p5 /mnt ;\
     dd if=/mnt/SD.bin of=/dev/mmcblk2 seek=$(((0x000040 + 0x0000))) conv=sync,fsync; \
     dd if=/mnt/SD.bin            of=/dev/mmcblk2 seek=$(((0x000040 + 0x0400))) conv=sync,fsync; \
@@ -197,8 +197,8 @@ void banshee::on_write_pushButton_clicked()
             ui->writeop_label->repaint();
             qApp->processEvents();
 
-            std::cout << "android_ops : " << android_ops[i] << "\n" << std::flush;
-            system(android_ops[i]);
+            std::cout << "android_ops : " << android7_ops[i] << "\n" << std::flush;
+            system(android7_ops[i]);
             statbarval += interval;
             ui->progressBar->setValue(statbarval);
             ui->progressBar->repaint();
